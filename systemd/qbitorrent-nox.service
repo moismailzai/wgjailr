@@ -10,7 +10,7 @@ BindsTo=netns-vpn.service
 Type=forking
 User=root
 Group=root
-UMask=007
+UMask=002
 ExecStart=/usr/bin/wgjailr e /usr/bin/qbittorrent-nox -d --webui-port=8080
 Restart=on-failure
 
