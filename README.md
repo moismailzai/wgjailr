@@ -9,6 +9,13 @@ run the script as a service.
 * `iproute2` packages
 * `wireguard-tools` packages
 
+## Installation
+Copy `bin/wgjailr` to `/usr/bin` and make sure it is executable:
+```
+sudo chmod +x bin/wgjailr
+sudo cp bin/wgjailr /usr/bin
+```
+
 ## Usage
 The script has three main commands that can be executed: `up`, `down`, and `e`.
 
