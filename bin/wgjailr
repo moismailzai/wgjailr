@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# CONFIGURABLES #########################################################################################################
+# the name of the network namespace
+NETWORK_NAMESPACE_NAME=vpn
+# the path to the wireguard config file
+VPN_CONFIG_PATH=/opt/wireguard.conf
+# the DNS server from your wireguard config file
+VPN_DNS_SERVER=10.2.0.1
+# the name of the wireguard interface
+VPN_INTERFACE_NAME=tun0
+# the local IP address from your wireguard config file
+VPN_LOCAL_IP=10.2.0.2/32
+########################################################################################################################
+
+# enable for debugging output
+# set -ex
+
+# check if we are root, and if not, re-execute the script as root
+[[ $UID != 0 ]] && exec sudo -E "$(readlink -f "$0")" "$@"
+
+# run a command in the network namespace as the user who ran this script
+execi() {
+  exec ip netns exec "$NETWORK_NAMESPACE_NAME" sudo -E -u \#"${SUDO_UID:-$(id -u)}" -g \#"${SUDO_GID:-$(id -g)}" -- "$@"
+}
+
+# bring up the network namespace and wireguard interface
+up() {
+  # add a new namespace
+  ip netns add "$NETWORK_NAMESPACE_NAME"
+
+  # add a loopback interface to the new namespace
+  ip -n "$NETWORK_NAMESPACE_NAME" link set lo up
+
+  # add a new wireguard VPN interface to the new namespace
+  ip link add "$VPN_INTERFACE_NAME" type wireguard
+  ip link set "$VPN_INTERFACE_NAME" netns "$NETWORK_NAMESPACE_NAME"
+
+  ip netns exec "$NETWORK_NAMESPACE_NAME" wg setconf "$VPN_INTERFACE_NAME" <(wg-quick strip "$VPN_CONFIG_PATH")
+  ip -n "$NETWORK_NAMESPACE_NAME" a add "$VPN_LOCAL_IP" dev "$VPN_INTERFACE_NAME"
+  ip -n "$NETWORK_NAMESPACE_NAME" link set "$VPN_INTERFACE_NAME" up
+
+  # set the default route in the new namespace
+  ip -n "$NETWORK_NAMESPACE_NAME" route add default dev "$VPN_INTERFACE_NAME"
+
+  # set network namespace resolv.conf
+  mkdir -p /etc/netns/"$NETWORK_NAMESPACE_NAME"/ && echo "nameserver $VPN_DNS_SERVER" > /etc/netns/"$NETWORK_NAMESPACE_NAME"/resolv.conf
+}
+
+# bring down the network namespace and wireguard interface
+down() {
+  # delete the network namespace
+  ip netns del "$NETWORK_NAMESPACE_NAME" || true
+
+  # cleanup resolvconf
+  rm /etc/netns/"$NETWORK_NAMESPACE_NAME"/resolv.conf || true
+}
+
+command="$1"
+shift
+
+case "$command" in
+up) up "$@" ;;
+down) down "$@" ;;
+e) execi "$@" ;;
+*)
+  echo "Usage: $0 up | down | e" >&2
+  exit 1
+  ;;
+esac

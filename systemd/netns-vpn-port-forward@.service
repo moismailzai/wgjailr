@@ -1,0 +1,19 @@
+# copy this file to /etc/systemd/system/
+# this has a hard dependency on the socat binary which must be installed in /usr/bin
+# run an instance of this service using the @ parameter to stipulate the port to forward:
+#  eg: systemctl enable netns-vpn-port-forward@8080.service
+
+[Unit]
+Description=Forwarder to port %i in netns
+After=netns-vpn.service
+Requires=netns-vpn.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat tcp-listen:%i,fork,reuseaddr exec:'ip netns exec vpn socat STDIO "tcp-connect:127.0.0.1:%i"',nofork
+SyslogIdentifier=vpn-port-fwd-%i
+Restart=on-failure
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

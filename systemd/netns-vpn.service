@@ -1,0 +1,16 @@
+# copy this file to /etc/systemd/system/
+# this has a hard dependency on the wgjailr script which must be installed in /usr/bin
+
+[Unit]
+Description=Named network namespace "vpn"
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/wgjailr up
+ExecStop=/usr/bin/wgjailr down
+
+[Install]
+WantedBy = multi-user.target

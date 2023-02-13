@@ -1,0 +1,18 @@
+# copy this file to /etc/systemd/system/
+# this has a hard dependency on the wgjailr script which must be installed in /usr/bin
+[Unit]
+Description=qBittorrent Command Line Client
+After=netns-vpn.service
+Requires=netns-vpn.service
+BindsTo=netns-vpn.service
+
+[Service]
+Type=forking
+User=root
+Group=root
+UMask=007
+ExecStart=/usr/bin/wgjailr e /usr/bin/qbittorrent-nox -d --webui-port=8080
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
