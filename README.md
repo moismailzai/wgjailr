@@ -39,5 +39,7 @@ In addition to the shell script, there are several Systemd unit files that are u
 * `netns-vpn.service`: This unit file is used to create the network namespace and set up the VPN interface. The ExecStart and ExecStop directives runs the `up` and `down` commands in the `wgjailr` script.
 * `netns-vpn-port-forward-@.service`: This unit file is used to forward a port from the root network namespace to the namespaced network. The `ExecStart` directive uses the `socat` utility to listen on a specified port and forward the connection to the namespaced network.
 * `qBittorrent-nox.service`: This unit file is an example of how to run a service, in this case `qBittorrent-nox`, in the network namespace. The `ExecStart` directive runs the `e` command in the `wgjailr` script, followed by the qBittorrent command line client.
+* `netns-vpn-qbittorrent-nox@.service`: This template unit file is an example of how to run a service, in this case `qBittorrent-nox`, in the network namespace as a specific user. It uses Systemd's built in support for network namespaces. Write the username that shall run the qbittorrent server after the "@". Example: sudo systemctl start netns-vpn-qbittorrent-nox@myqbittorrentuser  
+*Using a completely separate and unprivileged user to run the qbittorrent server is advantageous for security, because in case of a security vulnerability in qbittorrent, the attacker will only gain the privileges of the user running the server.*
 
 To use these unit files, you must copy them to the `/etc/systemd/system/` directory.
