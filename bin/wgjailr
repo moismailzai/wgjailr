@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # CONFIGURABLES #########################################################################################################
 # the name of the network namespace
@@ -14,7 +15,7 @@ VPN_LOCAL_IP=10.2.0.2/32
 ########################################################################################################################
 
 # enable for debugging output
-# set -ex
+# set -x
 
 # check if we are root, and if not, re-execute the script as root
 [[ $UID != 0 ]] && exec sudo -E "$(readlink -f "$0")" "$@"
