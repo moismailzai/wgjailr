@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # CONFIGURABLES #########################################################################################################
 # the name of the network namespace
@@ -6,15 +7,17 @@ NETWORK_NAMESPACE_NAME=vpn
 # the path to the wireguard config file
 VPN_CONFIG_PATH=/opt/wireguard.conf
 # the DNS server from your wireguard config file
-VPN_DNS_SERVER=10.2.0.1
+# if empty, will be read from the wireguard .conf file
+VPN_DNS_SERVER=""
 # the name of the wireguard interface
 VPN_INTERFACE_NAME=tun0
 # the local IP address from your wireguard config file
-VPN_LOCAL_IP=10.2.0.2/32
+# if empty, will be read from the wireguard .conf file
+VPN_LOCAL_IP=""
 ########################################################################################################################
 
 # enable for debugging output
-# set -ex
+#set -x
 
 # check if we are root, and if not, re-execute the script as root
 [[ $UID != 0 ]] && exec sudo -E "$(readlink -f "$0")" "$@"
@@ -37,14 +40,44 @@ up() {
   ip link set "$VPN_INTERFACE_NAME" netns "$NETWORK_NAMESPACE_NAME"
 
   ip netns exec "$NETWORK_NAMESPACE_NAME" wg setconf "$VPN_INTERFACE_NAME" <(wg-quick strip "$VPN_CONFIG_PATH")
-  ip -n "$NETWORK_NAMESPACE_NAME" a add "$VPN_LOCAL_IP" dev "$VPN_INTERFACE_NAME"
+  
+  # If the VPN_LOCAL_IP variable is set, we use it. If not, we read the ips from the wireguard config
+  if [ -z "$VPN_LOCAL_IP" ]
+  then
+    # First, delete the whitespace (spaces and tabs), since it is irrelevant and deleting it makes parsing easier
+    # Then we get the values of every line that contains an Address entry
+    # Then, since every Address line can have multiple ip addresses separated by comma, we make a newline separated list of ips by replacing the commas with newlines
+    LOCAL_IP_LIST="$(cat "$VPN_CONFIG_PATH" | tr -d ' ' | tr -d '\t' | awk -F '=' '$1 == "Address" {print $2}' | tr ',' '\n')"
+    # Now we set the ips from the generated list. Also works for IPv6
+    for ip in $LOCAL_IP_LIST
+    do
+      ip -n "$NETWORK_NAMESPACE_NAME" address add "$ip" dev "$VPN_INTERFACE_NAME"
+    done
+  else
+    ip -n "$NETWORK_NAMESPACE_NAME" address add "$VPN_LOCAL_IP" dev "$VPN_INTERFACE_NAME"
+  fi
   ip -n "$NETWORK_NAMESPACE_NAME" link set "$VPN_INTERFACE_NAME" up
 
   # set the default route in the new namespace
   ip -n "$NETWORK_NAMESPACE_NAME" route add default dev "$VPN_INTERFACE_NAME"
 
   # set network namespace resolv.conf
-  mkdir -p /etc/netns/"$NETWORK_NAMESPACE_NAME"/ && echo "nameserver $VPN_DNS_SERVER" > /etc/netns/"$NETWORK_NAMESPACE_NAME"/resolv.conf
+  mkdir -p /etc/netns/"$NETWORK_NAMESPACE_NAME"/
+  
+  # If the VPN_DNS_SERVER variable is set, we use it. If not, we read the ips from the wireguard config
+  if [ -z "$VPN_DNS_SERVER" ]
+  then
+    # First, delete the whitespace (spaces and tabs), since it is irrelevant and deleting it makes parsing easier
+    # Then we get the values of every line that contains a DNS entry
+    # Then, since every DNS line can have multiple ip addresses separated by comma, we make a newline separated list of ips by replacing the commas with newlines
+    DNS_SERVER_LIST="$(cat "$VPN_CONFIG_PATH" | tr -d ' ' | tr -d '\t' | awk -F '=' '$1 == "DNS" {print $2}' | tr ',' '\n')"
+    for dns_server in $DNS_SERVER_LIST
+    do
+      echo "nameserver $dns_server" >> /etc/netns/"$NETWORK_NAMESPACE_NAME"/resolv.conf
+    done
+  else
+    echo "nameserver $VPN_DNS_SERVER" > /etc/netns/"$NETWORK_NAMESPACE_NAME"/resolv.conf
+  fi
 }
 
 # bring down the network namespace and wireguard interface

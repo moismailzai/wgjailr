@@ -30,9 +30,9 @@ The `e` command allows executing a command in the network namespace as the curre
 The following variables are configurable, just change them at the top of the script:
 * `NETWORK_NAMESPACE_NAME`: The name of the network namespace. Default is `vpn`.
 * `VPN_CONFIG_PATH`: The path to your VPN configuration file. Default is `/opt/wireguard.conf`.
-* `VPN_DNS_SERVER`: The DNS server to be used in the network namespace. Default is `10.2.0.1`.
+* `VPN_DNS_SERVER`: The DNS server to be used in the network namespace. If not set, will be read from the wireguard .conf file.
 * `VPN_INTERFACE_NAME`: The name of the VPN interface in the network namespace. Default is `tun0`.
-* `VPN_LOCAL_IP`: The local IP address assigned to the VPN interface in the network namespace. Default is `10.2.0.2/32`.
+* `VPN_LOCAL_IP`: The local IP address assigned to the VPN interface in the network namespace. If not set, will be read from the wireguard .conf file.
 
 ## Systemd Unit Files
 In addition to the shell script, there are several Systemd unit files that are used to run the script on system start-up, forward a port from the root network namespace to the namespaced network, and run a service in the network namespace, effectively jailing the service to the network namespace.
