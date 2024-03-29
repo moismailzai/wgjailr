@@ -1,0 +1,20 @@
+# copy this file to /etc/systemd/system/
+[Unit]
+Description=qBittorrent-nox service for user %I in network namespace "vpn"
+After=netns-vpn.service
+Requires=netns-vpn.service
+BindsTo=netns-vpn.service
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+UMask=002
+WorkingDirectory=~
+NetworkNamespacePath=/var/run/netns/vpn
+BindReadOnlyPaths=/etc/netns/vpn/resolv.conf:/etc/resolv.conf:norbind
+ExecStart=/usr/bin/qbittorrent-nox --webui-port=8080
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
